@@ -1,0 +1,2 @@
+/* Customer role styling */
+:root{--brand:#176b54;--brand-dark:#10523f}.customer-shell{padding-bottom:calc(40px + env(safe-area-inset-bottom))}

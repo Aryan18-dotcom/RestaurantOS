@@ -1,0 +1,7 @@
+/* Waiter-specific floor and hand-off queue styling */
+:root{--brand:#376a9d;--brand-dark:#244d78}
+.table-card{border-top:3px solid #dce9f6}
+.waiter-ready-ticket{border:1px solid #f0c36d;border-top:4px solid #e99b22;box-shadow:0 8px 24px rgba(166,111,18,.08)}
+.waiter-ready-ticket .ticket-head h3{font-size:1.25rem}
+.waiter-ready-ticket .ticket-actions .btn{min-height:44px}
+@media(max-width:640px){.waiter-ready-ticket .ticket-head{align-items:flex-start;gap:10px}.waiter-ready-ticket .ticket-actions .btn{width:100%}}
