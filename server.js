@@ -298,7 +298,17 @@ function sessionSummary(sessionId) {
 function money(v) { return Math.round((Number(v)+Number.EPSILON)*100)/100; }
 function getLanIps() { const nets=os.networkInterfaces(), ips=[]; for (const entries of Object.values(nets)) for (const net of entries||[]) if (net.family==='IPv4' && !net.internal) ips.push(net.address); return ips; }
 function getLanOrigin() { return `http://${getLanIps()[0]||'localhost'}:${PORT}`; }
-function getAppOrigin() { return "https://attempts-posting-dietary-kings.trycloudflare.com"||getLanOrigin(); }
+function getAppOrigin() {
+  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL;
+  try {
+    const urlFilePath = path.join(os.homedir(), 'restaurant_url.txt');
+    if (fs.existsSync(urlFilePath)) {
+      const saved = fs.readFileSync(urlFilePath, 'utf8').trim();
+      if (saved) return saved;
+    }
+  } catch {}
+  return getLanOrigin();
+}
 
 app.get('/api/health', (_req,res)=>res.json({ ok:true, uptime:Math.round(process.uptime()), realtime:io.engine.clientsCount, database:'connected', restaurant:RESTAURANT }));
 app.get('/api/config', (_req,res)=>res.json({ restaurant:RESTAURANT, currency:process.env.CURRENCY||'INR', taxRate:TAX_RATE, googleReviewUrl:process.env.GOOGLE_REVIEW_URL||'', whatsappConfigured:!!(process.env.WHATSAPP_ACCESS_TOKEN&&process.env.WHATSAPP_PHONE_NUMBER_ID), origin:getAppOrigin(),publicUrlConfigured:!!PUBLIC_URL,lanOrigin:getLanOrigin(),lanIps:getLanIps(),localOrigin:`http://localhost:${PORT}` }));
