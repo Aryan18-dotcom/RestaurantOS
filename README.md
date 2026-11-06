@@ -40,7 +40,7 @@ The technical dashboard intentionally does not return sales, customer orders, in
 
 1. Extract this folder.
 2. Open a terminal in the `RestaurantOS-Live` folder.
-3. Copy `.env.example` to `.env` if you want to change the restaurant name, port, or tax rate.
+3. Copy `.env.example` to `.env`; keep `NODE_ENV=development` for local LAN/localhost links.
 4. Install dependencies:
 
    ```bash
@@ -86,7 +86,11 @@ Use separate browser windows/tabs to simulate the different roles. They all conn
 
 ## QR codes and customer access
 
-QR images are generated server-side with the `qrcode` package. By default, they point to the laptop's detected LAN address, so customers must be connected to the same Wi-Fi/LAN. To use QR links from mobile internet, set `PUBLIC_URL` in `.env` to the public HTTPS origin that routes back to this server (for example `https://orders.example.com`). The endpoint may be provided by a properly configured tunnel or a public reverse proxy/router setup; it must forward normal HTTP requests and Socket.IO WebSocket traffic. The server and that route must remain available while customers use the links. QR codes, copied menu links, and pickup links all use this same configured origin. When `PUBLIC_URL` is unset, startup logs state that QR links are LAN-only.
+QR images are generated server-side with the `qrcode` package. With `NODE_ENV=development`, they point to the laptop's detected LAN IPv4 address (or localhost if no LAN address is available), so customers must be connected to the same Wi-Fi/LAN. For production, set `NODE_ENV=production`; the app uses `PUBLIC_URL` when configured, otherwise it uses Render's `RENDER_EXTERNAL_URL`, then falls back to the saved/local origin. Configure a public HTTPS origin for mobile access. The endpoint must forward normal HTTP requests and Socket.IO WebSocket traffic. QR codes, copied menu links, and pickup links all use the same selected origin.
+
+### Deploying on Render
+
+Use a Render Web Service with `npm start`. Set `NODE_ENV=production` and `TRUST_PROXY=1` in the Render environment. Render's `RENDER_EXTERNAL_URL` is used automatically for QR and pickup links; set `PUBLIC_URL` only when using a custom domain. Attach a Render persistent disk mounted at the app's `data/` directory so SQLite data survives deploys and restarts.
 
 If the LAN IP changes, regenerate/print the QR code when operating LAN-only.
 

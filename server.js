@@ -19,14 +19,15 @@ const server = http.createServer(app);
 const io = new Server(server);
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
+const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 const RESTAURANT = process.env.RESTAURANT_NAME || 'Maison Table';
 const TAX_RATE = Math.max(0, Number(process.env.TAX_RATE ?? 5));
 const PUBLIC_URL = (() => {
-  const configuredUrl=String(process.env.PUBLIC_URL||'').trim();
+  const configuredUrl=String(process.env.PUBLIC_URL||process.env.RENDER_EXTERNAL_URL||'').trim();
   if(!configuredUrl)return '';
   let url;
-  try{url=new URL(configuredUrl)}catch{throw new Error('PUBLIC_URL must be a valid absolute URL, such as https://orders.example.com.')}
-  if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw new Error('PUBLIC_URL must contain only an http(s) origin, such as https://orders.example.com.');
+  try{url=new URL(configuredUrl)}catch{throw new Error('PUBLIC_URL or RENDER_EXTERNAL_URL must be a valid absolute URL, such as https://orders.example.com.')}
+  if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw new Error('PUBLIC_URL or RENDER_EXTERNAL_URL must contain only an http(s) origin, such as https://orders.example.com.');
   if(url.protocol!=='https:')console.warn('[PUBLIC_URL] HTTPS is strongly recommended for customer access over the internet.');
   return url.origin;
 })();
@@ -299,7 +300,8 @@ function money(v) { return Math.round((Number(v)+Number.EPSILON)*100)/100; }
 function getLanIps() { const nets=os.networkInterfaces(), ips=[]; for (const entries of Object.values(nets)) for (const net of entries||[]) if (net.family==='IPv4' && !net.internal) ips.push(net.address); return ips; }
 function getLanOrigin() { return `http://${getLanIps()[0]||'localhost'}:${PORT}`; }
 function getAppOrigin() {
-  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL;
+  if (IS_DEVELOPMENT) return getLanOrigin();
+  if (PUBLIC_URL) return PUBLIC_URL;
   try {
     const urlFilePath = path.join(os.homedir(), 'restaurant_url.txt');
     if (fs.existsSync(urlFilePath)) {
@@ -311,7 +313,7 @@ function getAppOrigin() {
 }
 
 app.get('/api/health', (_req,res)=>res.json({ ok:true, uptime:Math.round(process.uptime()), realtime:io.engine.clientsCount, database:'connected', restaurant:RESTAURANT }));
-app.get('/api/config', (_req,res)=>res.json({ restaurant:RESTAURANT, currency:process.env.CURRENCY||'INR', taxRate:TAX_RATE, googleReviewUrl:process.env.GOOGLE_REVIEW_URL||'', whatsappConfigured:!!(process.env.WHATSAPP_ACCESS_TOKEN&&process.env.WHATSAPP_PHONE_NUMBER_ID), origin:getAppOrigin(),publicUrlConfigured:!!PUBLIC_URL,lanOrigin:getLanOrigin(),lanIps:getLanIps(),localOrigin:`http://localhost:${PORT}` }));
+app.get('/api/config', (_req,res)=>res.json({ restaurant:RESTAURANT, currency:process.env.CURRENCY||'INR', taxRate:TAX_RATE, googleReviewUrl:process.env.GOOGLE_REVIEW_URL||'', whatsappConfigured:!!(process.env.WHATSAPP_ACCESS_TOKEN&&process.env.WHATSAPP_PHONE_NUMBER_ID), origin:getAppOrigin(),publicUrlConfigured:!IS_DEVELOPMENT&&!!PUBLIC_URL,lanOrigin:getLanOrigin(),lanIps:getLanIps(),localOrigin:`http://localhost:${PORT}` }));
 app.get('/api/menu', (_req,res)=>res.json(db.prepare('SELECT * FROM menu_items WHERE available=1 ORDER BY category,name').all()));
 
 app.get('/api/tables', allow('owner','waiter'), (_req,res)=>{
@@ -635,4 +637,4 @@ app.get('/api/qr/:tableId', allow('owner'), (req,res)=>{const t=db.prepare('SELE
 io.on('connection', socket=>{socket.emit('system:connected',{ok:true});socket.on('join:table', id=>{if(Number.isInteger(Number(id)))socket.join(`table:${Number(id)}`);});});
 app.get('/', (_req,res)=>res.redirect('/owner/index.html'));
 app.use((err,_req,res,_next)=>{console.error(err);res.status(500).json({error:'Unexpected server error.'});});
-server.listen(PORT,HOST,()=>{console.log(`\n${RESTAURANT} · RestaurantOS server`);console.log(`Local: http://localhost:${PORT}`);for(const ip of getLanIps())console.log(`LAN:   http://${ip}:${PORT}`);if(PUBLIC_URL){console.log(`Public: ${PUBLIC_URL}`);console.log('QR codes: using PUBLIC_URL; ensure it routes to this server and supports Socket.IO WebSockets.');console.warn('Security: change the initial staff credentials and use trusted HTTPS before public exposure.')}else{console.warn('PUBLIC_URL is not set. Customer QR codes use the LAN address and will not work over mobile internet.');console.log(`QR codes: ${getLanOrigin()}`)}console.log('SQLite: data/restaurant.sqlite');console.log('Press Ctrl+C to stop.\n');});
+server.listen(PORT,HOST,()=>{console.log(`\n${RESTAURANT} · RestaurantOS server`);console.log(`Local: http://localhost:${PORT}`);for(const ip of getLanIps())console.log(`LAN:   http://${ip}:${PORT}`);if(!IS_DEVELOPMENT&&PUBLIC_URL){console.log(`Public: ${PUBLIC_URL}`);console.log('QR codes: using the configured public origin; ensure it routes to this server and supports Socket.IO WebSockets.');console.warn('Security: change the initial staff credentials and use trusted HTTPS before public exposure.')}else{console.log('QR codes: using the local LAN origin.');console.log(`QR codes: ${getLanOrigin()}`)}console.log('SQLite: data/restaurant.sqlite');console.log('Press Ctrl+C to stop.\n');});
